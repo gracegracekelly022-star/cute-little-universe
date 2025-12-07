@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可爱小宇宙 💫</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1>💫 可爱小宇宙 💫</h1>
+            <div class="game-info">
+                <div class="info-item">
+                    <span class="label">得分：</span>
+                    <span class="score" id="score">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">移动：</span>
+                    <span class="moves" id="moves">25</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">目标：</span>
+                    <span class="target" id="target">100</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="game-board" id="gameBoard">
+            <!-- 游戏方块将通过JavaScript动态生成 -->
+        </div>
+
+        <div class="game-controls">
+            <div class="controls-row">
+                <button class="btn btn-new" id="newGameBtn">🎮 开始</button>
+                <button class="btn btn-hint" id="hintBtn">💡 提示</button>
+                <button class="btn btn-audio" id="audioBtn">🔊</button>
+            </div>
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="spongebob">🧽 海绵宝宝</button>
+                <button class="mode-btn" data-mode="moon">🌙 月亮</button>
+            </div>
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div class="modal" id="gameOverModal">
+            <div class="modal-content win-content" id="winContent">
+                <!-- 阶段1: 恭喜 + Thanks -->
+                <div class="win-stage" id="winStage1">
+                    <h2>🎉 你真棒！</h2>
+                    <p>得分：<span id="finalScore">0</span></p>
+                    <div class="reward-box thanks-box">
+                        <img src="reward/Thanks.JPG" alt="感谢">
+                    </div>
+                </div>
+                <!-- 阶段2: 福丽时刻 -->
+                <div class="win-stage" id="winStage2" style="display:none;">
+                    <h2>🎁 福丽时刻！</h2>
+                    <div class="reward-box">
+                        <img id="rewardImage" src="" alt="福利">
+                    </div>
+                    <button class="btn btn-primary" id="restartBtn">再玩一次</button>
+                </div>
+            </div>
+            <!-- 失败弹窗 -->
+            <div class="modal-content lose-content" id="loseContent" style="display:none;">
+                <h2>😢 游戏结束</h2>
+                <p>很遗憾！得分：<span id="loseScore">0</span></p>
+                <button class="btn btn-primary" id="restartBtnLose">再玩一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="moon/config.js"></script>
+    <script src="spongebob/config.js"></script>
+    <script src="reward/config.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
+

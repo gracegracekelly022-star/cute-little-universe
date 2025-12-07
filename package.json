@@ -1,0 +1,19 @@
+{
+  "name": "ghost-match-game",
+  "version": "1.0.0",
+  "description": "一个有趣的小鬼消消乐游戏",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "game",
+    "match-3",
+    "puzzle",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
