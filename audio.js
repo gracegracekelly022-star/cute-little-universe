@@ -20,8 +20,11 @@ class AudioManager {
 
     // 初始化语音音效
     initVoiceAudios() {
-        // 背景音乐 (v2 强制刷新缓存)
-        this.backgroundMusic = new Audio('sounds/0-background.mp3?v=3');
+        // 使用时间戳强制刷新缓存
+        const cacheBreaker = Date.now();
+        
+        // 背景音乐
+        this.backgroundMusic = new Audio('sounds/0-background.mp3?t=' + cacheBreaker);
         this.backgroundMusic.volume = 0.3;
         this.backgroundMusic.loop = true;  // 循环播放
         this.backgroundMusic.preload = 'auto';  // 预加载
@@ -41,7 +44,7 @@ class AudioManager {
         this.backgroundMusic.load();
         
         // Excellent 音效（match时）
-        this.excellentAudio = new Audio('sounds/1-excellent.mp3?v=3');
+        this.excellentAudio = new Audio('sounds/1-excellent.mp3?t=' + cacheBreaker);
         this.excellentAudio.volume = 0.8;
         this.hasExcellentAudio = false;
         
@@ -55,7 +58,7 @@ class AudioManager {
         });
         
         // Unbelievable 音效（达成目标时）
-        this.unbelievableAudio = new Audio('sounds/2-unbelievable.mp3?v=3');
+        this.unbelievableAudio = new Audio('sounds/2-unbelievable.mp3?t=' + cacheBreaker);
         this.unbelievableAudio.volume = 0.8;
         this.hasUnbelievableAudio = false;
         
@@ -65,7 +68,7 @@ class AudioManager {
         });
         
         // 福利时间音效
-        this.fuliTimeAudio = new Audio('sounds/3-fuli-time.mp3?v=3');
+        this.fuliTimeAudio = new Audio('sounds/3-fuli-time.mp3?t=' + cacheBreaker);
         this.fuliTimeAudio.volume = 0.4;
         this.hasFuliTimeAudio = false;
         
