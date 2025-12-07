@@ -4,7 +4,7 @@ const CONFIG = {
     GHOST_TYPES: ['👻', '👹', '👺', '🤡', '🎃', '😈'],
     INITIAL_MOVES: 25,
     TOTAL_LEVELS: 3,
-    LEVEL_TARGETS: [520, 520, 520], // 每关目标分数
+    LEVEL_TARGETS: [100, 100, 100], // 每关目标分数
     MATCH_MIN: 3,
     ANIMATION_DURATION: 300
 };
