@@ -3,7 +3,10 @@ class AudioManager {
     constructor() {
         this.enabled = true;
         this.audioContext = null;
+        this.synth = window.speechSynthesis;
+        this.voiceAudios = {};
         this.initAudioContext();
+        this.initVoiceAudios();
     }
 
     initAudioContext() {
@@ -12,6 +15,222 @@ class AudioManager {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) {
             console.log('Web Audio API 不支持');
+        }
+    }
+
+    // 初始化语音音效
+    initVoiceAudios() {
+        // 背景音乐
+        this.backgroundMusic = new Audio('sounds/0-background.mp3');
+        this.backgroundMusic.volume = 0.3;
+        this.backgroundMusic.loop = true;  // 循环播放
+        this.backgroundMusic.preload = 'auto';  // 预加载
+        this.hasBackgroundMusic = false;
+        this.backgroundMusicStarted = false;  // 跟踪是否已启动
+        
+        this.backgroundMusic.addEventListener('canplaythrough', () => {
+            this.hasBackgroundMusic = true;
+            console.log('✓ 已加载背景音乐');
+        });
+        
+        this.backgroundMusic.addEventListener('error', (e) => {
+            console.log('✗ 背景音乐加载失败', e);
+        });
+        
+        // 强制加载
+        this.backgroundMusic.load();
+        
+        // Excellent 音效（match时）
+        this.excellentAudio = new Audio('sounds/1-excellent.mp3');
+        this.excellentAudio.volume = 0.8;
+        this.hasExcellentAudio = false;
+        
+        this.excellentAudio.addEventListener('canplaythrough', () => {
+            this.hasExcellentAudio = true;
+            console.log('✓ 已加载 Excellent 音效');
+        });
+        this.excellentAudio.addEventListener('error', () => {
+            this.hasExcellentAudio = false;
+            console.log('ℹ Excellent 音效未找到，使用合成音效');
+        });
+        
+        // Unbelievable 音效（达成目标时）
+        this.unbelievableAudio = new Audio('sounds/2-unbelievable.mp3');
+        this.unbelievableAudio.volume = 0.8;
+        this.hasUnbelievableAudio = false;
+        
+        this.unbelievableAudio.addEventListener('canplaythrough', () => {
+            this.hasUnbelievableAudio = true;
+            console.log('✓ 已加载 Unbelievable 音效');
+        });
+        
+        // 福利时间音效
+        this.fuliTimeAudio = new Audio('sounds/3-fuli-time.mp3');
+        this.fuliTimeAudio.volume = 0.4;
+        this.hasFuliTimeAudio = false;
+        
+        this.fuliTimeAudio.addEventListener('canplaythrough', () => {
+            this.hasFuliTimeAudio = true;
+            console.log('✓ 已加载福利时间音效');
+        });
+        
+        // 备用：创建自定义可爱音效
+        this.createCuteExcellentSound();
+    }
+
+    // 播放背景音乐
+    playBackgroundMusic() {
+        if (!this.enabled) return;
+        if (this.backgroundMusicStarted && !this.backgroundMusic.paused) return; // 已在播放
+        
+        // 尝试播放，不管是否已加载完成
+        const playPromise = this.backgroundMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                this.backgroundMusicStarted = true;
+                console.log('▶ 背景音乐开始播放');
+            }).catch((error) => {
+                console.log('背景音乐播放失败:', error.message);
+                // 如果失败，稍后重试
+                setTimeout(() => {
+                    if (this.enabled && !this.backgroundMusicStarted) {
+                        this.backgroundMusic.play().catch(() => {});
+                    }
+                }, 1000);
+            });
+        }
+    }
+
+    // 暂停背景音乐
+    pauseBackgroundMusic() {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+        }
+    }
+
+    // 恢复背景音乐
+    resumeBackgroundMusic() {
+        if (!this.enabled) return;
+        if (this.backgroundMusic && this.backgroundMusic.paused && this.backgroundMusicStarted) {
+            this.backgroundMusic.play().catch(() => {});
+        }
+    }
+
+    // 停止背景音乐
+    stopBackgroundMusic() {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            this.backgroundMusic.currentTime = 0;
+            this.backgroundMusicStarted = false;
+        }
+    }
+
+    // 播放福利时间音效
+    playFuliTime() {
+        if (!this.enabled) return;
+        
+        if (this.hasFuliTimeAudio) {
+            this.fuliTimeAudio.currentTime = 0;
+            this.fuliTimeAudio.play().catch(() => {});
+        } else {
+            // 备用音效
+            this.playCuteSynthSound();
+        }
+    }
+
+    // 创建可爱的 Excellent 合成音效（作为备用）
+    createCuteExcellentSound() {
+        // 预加载合成音效参数
+        this.cuteNotes = [
+            { freq: 880, duration: 0.1 },   // A5
+            { freq: 1108, duration: 0.1 },  // C#6
+            { freq: 1318, duration: 0.15 }, // E6
+            { freq: 1760, duration: 0.2 },  // A6
+        ];
+    }
+
+    // 播放可爱的合成音效
+    playCuteSynthSound() {
+        if (!this.audioContext) return;
+        this.resumeAudioContext();
+        
+        this.cuteNotes.forEach((note, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = note.freq;
+            oscillator.type = 'sine';
+            
+            const startTime = this.audioContext.currentTime + (index * 0.12);
+            gainNode.gain.setValueAtTime(0.2, startTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + note.duration);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + note.duration);
+        });
+    }
+
+    // 播放可爱的语音（使用TTS作为备用）
+    playVoice(text, pitch = 1.5, rate = 1.0) {
+        if (!this.enabled || !this.synth) return;
+        
+        // 取消之前的语音
+        this.synth.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.pitch = Math.min(pitch, 2);
+        utterance.rate = rate;
+        utterance.volume = 1.0;
+        
+        const voices = this.synth.getVoices();
+        const preferredVoice = voices.find(v => 
+            v.name.includes('Samantha') ||
+            v.name.includes('Princess') ||
+            v.name.includes('Junior')
+        ) || voices.find(v => v.lang.startsWith('en'));
+        
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+        
+        this.synth.speak(utterance);
+    }
+
+    // 播放 Excellent 音效（match时）- 可爱小孩声音
+    playExcellent() {
+        if (!this.enabled) return;
+        
+        // 优先使用本地音效文件
+        if (this.hasExcellentAudio) {
+            this.excellentAudio.currentTime = 0;
+            this.excellentAudio.play().catch(() => {});
+        } else {
+            // 备用：合成音效 + TTS
+            this.playCuteSynthSound();
+            setTimeout(() => {
+                this.playVoice('Excellent!', 2.0, 1.3);
+            }, 200);
+        }
+    }
+
+    // 播放 Unbelievable 语音（胜利时）
+    playUnbelievable() {
+        if (!this.enabled) return;
+        
+        // 优先使用本地音效文件
+        if (this.hasUnbelievableAudio) {
+            this.unbelievableAudio.currentTime = 0;
+            this.unbelievableAudio.play().catch(() => {});
+        } else {
+            // 备用：合成音效 + TTS
+            this.playCuteSynthSound();
+            setTimeout(() => {
+                this.playVoice('Unbelievable!', 2.0, 1.0);
+            }, 400);
         }
     }
 

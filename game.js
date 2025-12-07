@@ -3,7 +3,8 @@ const CONFIG = {
     BOARD_SIZE: 6,
     GHOST_TYPES: ['👻', '👹', '👺', '🤡', '🎃', '😈'],
     INITIAL_MOVES: 25,
-    TARGET_SCORE: 100,
+    TOTAL_LEVELS: 3,
+    LEVEL_TARGETS: [520, 520, 520], // 每关目标分数
     MATCH_MIN: 3,
     ANIMATION_DURATION: 300
 };
@@ -140,6 +141,8 @@ class Game {
     initGame() {
         this.score = 0;
         this.moves = CONFIG.INITIAL_MOVES;
+        this.level = 1;
+        this.target = CONFIG.LEVEL_TARGETS[0];
         this.gameOver = false;
         this.selectedCell = null;
         
@@ -152,6 +155,56 @@ class Game {
         this.renderBoard();
         this.updateUI();
         this.modal.classList.remove('show');
+        
+        // 重置胜利弹窗状态
+        const winStage1 = document.getElementById('winStage1');
+        const winStage2 = document.getElementById('winStage2');
+        if (winStage1) {
+            winStage1.style.display = 'block';
+            winStage1.classList.remove('stage-fade-out');
+            winStage1.querySelector('.stars-overlay')?.remove();
+        }
+        if (winStage2) {
+            winStage2.style.display = 'none';
+            winStage2.classList.remove('stage-fade-in');
+            winStage2.querySelector('.stars-overlay')?.remove();
+        }
+        
+        // 恢复背景音乐（如果之前暂停了）
+        audioManager.resumeBackgroundMusic();
+    }
+
+    // 进入下一关
+    nextLevel() {
+        this.level++;
+        this.score = 0;
+        this.target = CONFIG.LEVEL_TARGETS[this.level - 1];
+        this.selectedCell = null;
+        
+        // 重新生成棋盘
+        const result = selectRandomImages(themeManager.currentTheme);
+        THEMES[themeManager.currentTheme].types = result.types;
+        themeManager.useEmoji = result.useEmoji;
+        
+        this.createBoard();
+        this.renderBoard();
+        this.updateUI();
+        
+        // 显示下一关提示
+        this.showLevelNotice();
+    }
+
+    // 显示关卡提示
+    showLevelNotice() {
+        const notice = document.createElement('div');
+        notice.className = 'level-notice';
+        notice.innerHTML = `<span>🎯 第 ${this.level} 关</span>`;
+        document.body.appendChild(notice);
+        
+        setTimeout(() => {
+            notice.classList.add('fade-out');
+            setTimeout(() => notice.remove(), 500);
+        }, 1500);
     }
 
     createBoard() {
@@ -224,14 +277,32 @@ class Game {
         document.getElementById('restartBtn').addEventListener('click', () => this.initGame());
         document.getElementById('restartBtnLose').addEventListener('click', () => this.initGame());
         
+        // 分享按钮
+        document.getElementById('shareBtn').addEventListener('click', () => this.shareGame());
+        
         // 音效按钮
         const audioBtn = document.getElementById('audioBtn');
         audioBtn.addEventListener('click', () => {
             const enabled = audioManager.toggle();
             audioBtn.textContent = enabled ? '🔊' : '🔇';
             audioBtn.classList.toggle('muted', !enabled);
-            if (enabled) audioManager.playSelect();
+            if (enabled) {
+                audioManager.playSelect();
+                audioManager.playBackgroundMusic();
+            } else {
+                audioManager.pauseBackgroundMusic();
+            }
         });
+
+        // 用户交互时尝试启动背景音乐（浏览器安全策略要求）
+        const tryPlayBackgroundMusic = () => {
+            audioManager.playBackgroundMusic();
+        };
+        
+        // 监听多种用户交互事件来启动背景音乐
+        document.addEventListener('click', tryPlayBackgroundMusic);
+        document.addEventListener('touchstart', tryPlayBackgroundMusic);
+        document.addEventListener('keydown', tryPlayBackgroundMusic, { once: true });
 
         // 模式切换按钮
         this.initModeToggle();
@@ -326,7 +397,6 @@ class Game {
         // 检查是否有匹配
         if (this.hasMatches()) {
             // 有效移动
-            this.moves--;
             this.updateUI();
             
             // 清除选择状态
@@ -337,6 +407,12 @@ class Game {
 
             // 处理匹配和下落
             await this.processMatches();
+            
+            // 检查是否有可能的移动，没有则洗牌
+            if (!this.hasPossibleMoves() && !this.gameOver) {
+                await this.delay(300);
+                this.shuffleBoard();
+            }
             
             this.isAnimating = false;
             
@@ -431,9 +507,12 @@ class Game {
             
             // 播放消除音效
             audioManager.playMatch();
+            
+            // 播放可爱的语音称赞
+            audioManager.playExcellent();
 
-            // 计算得分
-            this.score += matches.length * 10 * (matches.length >= 4 ? 2 : 1);
+            // 计算得分 - 每次消除固定50分
+            this.score += 50;
             this.updateUI();
 
             // 等待动画
@@ -593,25 +672,130 @@ class Game {
     showHint() {
         if (this.isAnimating || this.gameOver) return;
 
-        // 简单实现：随机高亮一个可能的移动
+        // 查找一个可能的移动
+        const possibleMove = this.findPossibleMove();
+        
+        if (possibleMove) {
+            this.highlightHint(possibleMove.row1, possibleMove.col1, possibleMove.row2, possibleMove.col2);
+        } else {
+            // 没有可能的移动，自动洗牌
+            this.shuffleBoard();
+        }
+    }
+
+    // 查找一个可能的移动
+    findPossibleMove() {
         for (let row = 0; row < CONFIG.BOARD_SIZE; row++) {
             for (let col = 0; col < CONFIG.BOARD_SIZE; col++) {
                 // 尝试向右交换
                 if (col < CONFIG.BOARD_SIZE - 1) {
                     if (this.wouldCreateMatch(row, col, row, col + 1)) {
-                        this.highlightHint(row, col, row, col + 1);
-                        return;
+                        return { row1: row, col1: col, row2: row, col2: col + 1 };
                     }
                 }
                 // 尝试向下交换
                 if (row < CONFIG.BOARD_SIZE - 1) {
                     if (this.wouldCreateMatch(row, col, row + 1, col)) {
-                        this.highlightHint(row, col, row + 1, col);
-                        return;
+                        return { row1: row, col1: col, row2: row + 1, col2: col };
                     }
                 }
             }
         }
+        return null; // 没有可能的移动
+    }
+
+    // 检查是否有可能的移动
+    hasPossibleMoves() {
+        return this.findPossibleMove() !== null;
+    }
+
+    // 洗牌 - 当没有可能的移动时调用
+    shuffleBoard() {
+        // 收集所有当前的方块
+        const allGhosts = [];
+        for (let row = 0; row < CONFIG.BOARD_SIZE; row++) {
+            for (let col = 0; col < CONFIG.BOARD_SIZE; col++) {
+                allGhosts.push(this.board[row][col]);
+            }
+        }
+        
+        // 打乱顺序
+        for (let i = allGhosts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allGhosts[i], allGhosts[j]] = [allGhosts[j], allGhosts[i]];
+        }
+        
+        // 重新填充棋盘
+        let index = 0;
+        for (let row = 0; row < CONFIG.BOARD_SIZE; row++) {
+            for (let col = 0; col < CONFIG.BOARD_SIZE; col++) {
+                this.board[row][col] = allGhosts[index++];
+            }
+        }
+        
+        // 确保洗牌后没有初始匹配
+        while (this.hasMatches()) {
+            for (let row = 0; row < CONFIG.BOARD_SIZE; row++) {
+                for (let col = 0; col < CONFIG.BOARD_SIZE; col++) {
+                    if (this.isPartOfMatch(row, col)) {
+                        this.board[row][col] = this.randomGhost();
+                    }
+                }
+            }
+        }
+        
+        // 如果洗牌后仍然没有可能的移动，递归洗牌
+        if (!this.hasPossibleMoves()) {
+            this.shuffleBoard();
+            return;
+        }
+        
+        this.renderBoard();
+        
+        // 显示洗牌提示
+        this.showShuffleNotice();
+        audioManager.playHint();
+    }
+
+    // 显示洗牌提示
+    showShuffleNotice() {
+        const notice = document.createElement('div');
+        notice.className = 'shuffle-notice';
+        notice.textContent = '🔀 已自动洗牌！';
+        notice.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            z-index: 1000;
+            animation: fadeInOut 2s ease-in-out forwards;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        `;
+        
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+                20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+                30% { transform: translate(-50%, -50%) scale(1); }
+                70% { opacity: 1; }
+                100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(notice);
+        
+        setTimeout(() => {
+            notice.remove();
+            style.remove();
+        }, 2000);
     }
 
     wouldCreateMatch(row1, col1, row2, col2) {
@@ -649,15 +833,59 @@ class Game {
 
     updateUI() {
         this.scoreElement.textContent = this.score;
-        this.movesElement.textContent = this.moves;
+        this.targetElement.textContent = this.target;
+        
+        // 更新关卡显示
+        const levelElement = document.getElementById('level');
+        if (levelElement) {
+            levelElement.textContent = this.level;
+        }
     }
 
     checkGameOver() {
         if (this.score >= this.target) {
-            this.showGameOver(true);
-        } else if (this.moves <= 0) {
-            this.showGameOver(false);
+            if (this.level >= CONFIG.TOTAL_LEVELS) {
+                // 通关！显示最终胜利
+                this.showGameOver(true);
+            } else {
+                // 进入下一关
+                this.showLevelComplete();
+            }
         }
+    }
+
+    // 显示关卡完成
+    showLevelComplete() {
+        // 根据关卡显示不同图片
+        const levelImages = {
+            1: 'reward/round-1.jpg',
+            2: 'reward/round-2.jpg'
+        };
+        const imageSrc = levelImages[this.level] || 'reward/Thanks.JPG';
+        
+        const notice = document.createElement('div');
+        notice.className = 'level-complete-notice';
+        notice.innerHTML = `
+            <div class="level-complete-content">
+                <h2>🎉 第 ${this.level} 关完成！</h2>
+                <div class="level-thanks-box">
+                    <img src="${imageSrc}" alt="Thanks">
+                </div>
+                <button class="btn btn-next-level" id="nextLevelBtn">✨ 进入下一关</button>
+            </div>
+        `;
+        document.body.appendChild(notice);
+        
+        audioManager.playWin();
+        
+        // 点击按钮进入下一关
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            notice.classList.add('fade-out');
+            setTimeout(() => {
+                notice.remove();
+                this.nextLevel();
+            }, 500);
+        });
     }
 
     showGameOver(won) {
@@ -676,21 +904,70 @@ class Game {
             winStage2.style.display = 'none';
             document.getElementById('finalScore').textContent = this.score;
             this.modal.classList.add('show');
+            
+            // 暂停背景音乐，播放胜利音效
+            audioManager.pauseBackgroundMusic();
             audioManager.playWin();
             
-            // 2.5秒后显示福丽时刻
+            // 播放 Unbelievable 音效
             setTimeout(() => {
-                winStage1.style.display = 'none';
-                winStage2.style.display = 'block';
+                audioManager.playUnbelievable();
+            }, 500);
+            
+            // 提前预加载福利图片
+            let rewardImageSrc = '';
+            if (typeof REWARD_POOL !== 'undefined' && REWARD_POOL.length > 0) {
+                const randomIndex = Math.floor(Math.random() * REWARD_POOL.length);
+                rewardImageSrc = 'reward/' + REWARD_POOL[randomIndex];
+                const preloadImg = new Image();
+                preloadImg.src = rewardImageSrc;
+            }
+            
+            // 2秒后开始星月过渡动画
+            setTimeout(() => {
+                // 设置好福利图片
+                document.getElementById('rewardImage').src = rewardImageSrc;
                 
-                // 随机选择一张福利图片
-                if (typeof REWARD_POOL !== 'undefined' && REWARD_POOL.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * REWARD_POOL.length);
-                    document.getElementById('rewardImage').src = 'reward/' + REWARD_POOL[randomIndex];
-                }
+                const modalContent = this.modal.querySelector('.modal-content');
+                modalContent.style.position = 'relative';
+                modalContent.style.overflow = 'hidden';
                 
-                audioManager.playMatch();
-            }, 2500);
+                // 创建星星月亮动画元素（透明背景，只有星星月亮）
+                const starsHtml = `
+                    <span class="floating-star" style="--x:-30px;--y:-50px;--delay:0s;--size:2em">⭐</span>
+                    <span class="floating-star" style="--x:40px;--y:-40px;--delay:0.1s;--size:1.5em">✨</span>
+                    <span class="floating-star" style="--x:-50px;--y:30px;--delay:0.2s;--size:1.8em">🌟</span>
+                    <span class="floating-star" style="--x:60px;--y:20px;--delay:0.15s;--size:2.2em">⭐</span>
+                    <span class="floating-star" style="--x:0px;--y:-60px;--delay:0.25s;--size:1.6em">✨</span>
+                    <span class="floating-star" style="--x:-40px;--y:50px;--delay:0.3s;--size:1.4em">🌟</span>
+                    <span class="floating-moon" style="--delay:0.1s">🌙</span>
+                `;
+                
+                // Stage1 开始淡出并添加星星
+                winStage1.insertAdjacentHTML('beforeend', '<div class="stars-overlay">' + starsHtml + '</div>');
+                winStage1.classList.add('stage-fade-out');
+                
+                // 内容切换
+                setTimeout(() => {
+                    winStage1.style.display = 'none';
+                    winStage1.classList.remove('stage-fade-out');
+                    winStage1.querySelector('.stars-overlay')?.remove();
+                    
+                    // Stage2 淡入并添加星星
+                    winStage2.insertAdjacentHTML('beforeend', '<div class="stars-overlay">' + starsHtml + '</div>');
+                    winStage2.style.display = 'block';
+                    winStage2.classList.add('stage-fade-in');
+                    
+                    // 播放福利时间音效
+                    audioManager.playFuliTime();
+                    
+                    // 清理动画
+                    setTimeout(() => {
+                        winStage2.classList.remove('stage-fade-in');
+                        winStage2.querySelector('.stars-overlay')?.remove();
+                    }, 800);
+                }, 500);
+            }, 2000);
         } else {
             // 失败
             winContent.style.display = 'none';
@@ -703,6 +980,41 @@ class Game {
 
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // 分享游戏
+    shareGame() {
+        const url = window.location.href;
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(url).then(() => {
+            this.showToast('✅ 链接已复制，快去分享吧！');
+        }).catch(() => {
+            // 降级方案
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            this.showToast('✅ 链接已复制，快去分享吧！');
+        });
+    }
+
+    // 显示提示消息
+    showToast(message) {
+        // 移除已有的 toast
+        document.querySelector('.copy-toast')?.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // 2秒后移除
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
     }
 }
 

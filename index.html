@@ -16,12 +16,12 @@
                     <span class="score" id="score">0</span>
                 </div>
                 <div class="info-item">
-                    <span class="label">移动：</span>
-                    <span class="moves" id="moves">25</span>
-                </div>
-                <div class="info-item">
                     <span class="label">目标：</span>
                     <span class="target" id="target">100</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">关卡：</span>
+                    <span class="level" id="level">1</span><span class="level-total"> / 3</span>
                 </div>
             </div>
         </header>
@@ -59,7 +59,10 @@
                     <div class="reward-box">
                         <img id="rewardImage" src="" alt="福利">
                     </div>
-                    <button class="btn btn-primary" id="restartBtn">再玩一次</button>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="restartBtn">🌟 再玩一次</button>
+                        <button class="btn btn-share" id="shareBtn">✨ 分享快乐</button>
+                    </div>
                 </div>
             </div>
             <!-- 失败弹窗 -->
