@@ -89,26 +89,10 @@ class AudioManager {
         if (this.audioLoaded) return;
         this.audioLoaded = true;
 
-        console.log('📱 iOS: 强制加载所有音频...');
-
-        // 强制加载所有音频文件（静音加载）
-        [
-            { audio: this.excellentAudio, vol: 0.8 },
-            { audio: this.unbelievableAudio, vol: 0.8 },
-            { audio: this.fuliTimeAudio, vol: 0.2 }
-        ].forEach(({ audio, vol }) => {
+        // 只调用 load()，不播放
+        [this.excellentAudio, this.unbelievableAudio, this.fuliTimeAudio].forEach(audio => {
             if (audio) {
-                const originalVolume = vol;
-                audio.volume = 0;  // 静音
                 audio.load();
-                // iOS 需要播放一下才能加载
-                audio.play().then(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.volume = originalVolume;  // 恢复音量
-                }).catch(() => {
-                    audio.volume = originalVolume;  // 恢复音量
-                });
             }
         });
     }
