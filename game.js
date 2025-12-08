@@ -386,60 +386,65 @@ class Game {
     async swapCells(row1, col1, row2, col2) {
         this.isAnimating = true;
 
-        // 交换数据
-        const temp = this.board[row1][col1];
-        this.board[row1][col1] = this.board[row2][col2];
-        this.board[row2][col2] = temp;
+        try {
+            // 交换数据
+            const temp = this.board[row1][col1];
+            this.board[row1][col1] = this.board[row2][col2];
+            this.board[row2][col2] = temp;
 
-        // 更新显示
-        this.renderBoard();
+            // 更新显示
+            this.renderBoard();
 
-        // 检查是否有匹配
-        if (this.hasMatches()) {
-            // 有效移动
-            this.updateUI();
-            
-            // 清除选择状态
-            if (this.selectedCell) {
-                this.selectedCell.element.classList.remove('selected');
-                this.selectedCell = null;
-            }
-
-            // 处理匹配和下落
-            await this.processMatches();
-            
-            // 检查是否有可能的移动，没有则洗牌
-            if (!this.hasPossibleMoves() && !this.gameOver) {
-                await this.delay(300);
-                this.shuffleBoard();
-            }
-            
-            this.isAnimating = false;
-            
-            // 检查游戏是否结束
-            this.checkGameOver();
-        } else {
-            // 无效移动，交换回来
-            audioManager.playInvalid();
-            setTimeout(() => {
-                const temp = this.board[row1][col1];
-                this.board[row1][col1] = this.board[row2][col2];
-                this.board[row2][col2] = temp;
-                this.renderBoard();
+            // 检查是否有匹配
+            if (this.hasMatches()) {
+                // 有效移动
+                this.updateUI();
                 
-                // 添加无效动画
-                const cells = this.boardElement.querySelectorAll('.cell');
-                cells[row1 * CONFIG.BOARD_SIZE + col1].classList.add('invalid');
-                cells[row2 * CONFIG.BOARD_SIZE + col2].classList.add('invalid');
+                // 清除选择状态
+                if (this.selectedCell) {
+                    this.selectedCell.element.classList.remove('selected');
+                    this.selectedCell = null;
+                }
+
+                // 处理匹配和下落
+                await this.processMatches();
                 
+                // 检查是否有可能的移动，没有则洗牌
+                if (!this.hasPossibleMoves() && !this.gameOver) {
+                    await this.delay(300);
+                    this.shuffleBoard();
+                }
+                
+                this.isAnimating = false;
+                
+                // 检查游戏是否结束
+                this.checkGameOver();
+            } else {
+                // 无效移动，交换回来
+                audioManager.playInvalid();
                 setTimeout(() => {
-                    if (this.selectedCell) {
-                        this.selectedCell.element.classList.remove('selected');
-                        this.selectedCell = null;
-                    }
-                    this.isAnimating = false;
+                    const temp = this.board[row1][col1];
+                    this.board[row1][col1] = this.board[row2][col2];
+                    this.board[row2][col2] = temp;
+                    this.renderBoard();
+                    
+                    // 添加无效动画
+                    const cells = this.boardElement.querySelectorAll('.cell');
+                    cells[row1 * CONFIG.BOARD_SIZE + col1].classList.add('invalid');
+                    cells[row2 * CONFIG.BOARD_SIZE + col2].classList.add('invalid');
+                    
+                    setTimeout(() => {
+                        if (this.selectedCell) {
+                            this.selectedCell.element.classList.remove('selected');
+                            this.selectedCell = null;
+                        }
+                        this.isAnimating = false;
+                    }, 300);
                 }, 300);
-            }, 300);
+            }
+        } catch (error) {
+            console.error('游戏操作出错:', error);
+            this.isAnimating = false;  // 确保重置，避免卡住
         }
     }
 
@@ -902,7 +907,7 @@ class Game {
             loseContent.style.display = 'none';
             winStage1.style.display = 'block';
             winStage2.style.display = 'none';
-            document.getElementById('finalScore').textContent = this.score;
+            // 不再显示分数
             this.modal.classList.add('show');
             
             // 暂停背景音乐，播放胜利音效
@@ -923,7 +928,7 @@ class Game {
                 preloadImg.src = rewardImageSrc;
             }
             
-            // 2秒后开始星月过渡动画
+            // 4秒后开始星月过渡动画（给用户更多时间看文字）
             setTimeout(() => {
                 // 设置好福利图片
                 document.getElementById('rewardImage').src = rewardImageSrc;
@@ -967,7 +972,7 @@ class Game {
                         winStage2.querySelector('.stars-overlay')?.remove();
                     }, 800);
                 }, 500);
-            }, 2000);
+            }, 4000);
         } else {
             // 失败
             winContent.style.display = 'none';
