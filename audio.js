@@ -441,3 +441,31 @@ class AudioManager {
 // 导出单例
 const audioManager = new AudioManager();
 
+// 调试功能
+document.addEventListener('DOMContentLoaded', () => {
+    const debugBtn = document.getElementById('debugBtn');
+    const debugInfo = document.getElementById('debugInfo');
+    
+    if (debugBtn && debugInfo) {
+        debugBtn.addEventListener('click', () => {
+            const info = [
+                '=== 音效加载状态 ===',
+                '背景音乐: ' + (audioManager.hasBackgroundMusic ? '✅ 已加载' : '❌ 未加载'),
+                'Excellent: ' + (audioManager.hasExcellentAudio ? '✅ 已加载' : '❌ 未加载'),
+                'Unbelievable: ' + (audioManager.hasUnbelievableAudio ? '✅ 已加载' : '❌ 未加载'),
+                '福利时间: ' + (audioManager.hasFuliTimeAudio ? '✅ 已加载' : '❌ 未加载'),
+                '',
+                '=== 音频文件信息 ===',
+                'Excellent src: ' + (audioManager.excellentAudio ? audioManager.excellentAudio.src : 'N/A'),
+                'Excellent readyState: ' + (audioManager.excellentAudio ? audioManager.excellentAudio.readyState : 'N/A'),
+                '',
+                '=== 浏览器信息 ===',
+                'UserAgent: ' + navigator.userAgent.substring(0, 80) + '...'
+            ];
+            
+            debugInfo.innerHTML = info.join('<br>');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+});
+
