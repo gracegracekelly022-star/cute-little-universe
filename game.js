@@ -761,7 +761,7 @@ class Game {
     showShuffleNotice() {
         const notice = document.createElement('div');
         notice.className = 'shuffle-notice';
-        notice.textContent = '🔀 已自动洗牌！';
+        notice.textContent = '⭐️ Shuffle!';
         notice.style.cssText = `
             position: fixed;
             top: 50%;
