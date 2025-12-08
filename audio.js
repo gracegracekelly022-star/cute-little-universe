@@ -79,13 +79,42 @@ class AudioManager {
         
         // 备用：创建自定义可爱音效
         this.createCuteExcellentSound();
+        
+        // iOS 需要用户交互后才能加载音频
+        this.audioLoaded = false;
+    }
+    
+    // 强制加载所有音频（在用户交互时调用）
+    forceLoadAllAudios() {
+        if (this.audioLoaded) return;
+        this.audioLoaded = true;
+        
+        console.log('📱 iOS: 强制加载所有音频...');
+        
+        // 强制加载所有音频文件
+        [this.excellentAudio, this.unbelievableAudio, this.fuliTimeAudio].forEach(audio => {
+            if (audio) {
+                audio.load();
+                // iOS 需要播放一下才能加载
+                audio.play().then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }).catch(() => {
+                    // 忽略播放失败
+                });
+            }
+        });
     }
 
     // 播放背景音乐
     playBackgroundMusic() {
         if (!this.enabled) return;
-        if (this.backgroundMusicStarted && !this.backgroundMusic.paused) return; // 已在播放
         
+        // iOS: 用户交互时强制加载所有音频
+        this.forceLoadAllAudios();
+        
+        if (this.backgroundMusicStarted && !this.backgroundMusic.paused) return; // 已在播放
+
         // 尝试播放，不管是否已加载完成
         const playPromise = this.backgroundMusic.play();
         
