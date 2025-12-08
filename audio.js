@@ -88,19 +88,26 @@ class AudioManager {
     forceLoadAllAudios() {
         if (this.audioLoaded) return;
         this.audioLoaded = true;
-        
+
         console.log('📱 iOS: 强制加载所有音频...');
-        
-        // 强制加载所有音频文件
-        [this.excellentAudio, this.unbelievableAudio, this.fuliTimeAudio].forEach(audio => {
+
+        // 强制加载所有音频文件（静音加载）
+        [
+            { audio: this.excellentAudio, vol: 0.8 },
+            { audio: this.unbelievableAudio, vol: 0.8 },
+            { audio: this.fuliTimeAudio, vol: 0.2 }
+        ].forEach(({ audio, vol }) => {
             if (audio) {
+                const originalVolume = vol;
+                audio.volume = 0;  // 静音
                 audio.load();
                 // iOS 需要播放一下才能加载
                 audio.play().then(() => {
                     audio.pause();
                     audio.currentTime = 0;
+                    audio.volume = originalVolume;  // 恢复音量
                 }).catch(() => {
-                    // 忽略播放失败
+                    audio.volume = originalVolume;  // 恢复音量
                 });
             }
         });
@@ -162,9 +169,13 @@ class AudioManager {
     playFuliTime() {
         if (!this.enabled) return;
         
-        if (this.hasFuliTimeAudio) {
+        // 尝试播放本地音效文件
+        if (this.fuliTimeAudio) {
             this.fuliTimeAudio.currentTime = 0;
-            this.fuliTimeAudio.play().catch(() => {});
+            this.fuliTimeAudio.play().catch(() => {
+                // 播放失败时使用备用音效
+                this.playCuteSynthSound();
+            });
         } else {
             // 备用音效
             this.playCuteSynthSound();
@@ -236,27 +247,27 @@ class AudioManager {
     playExcellent() {
         if (!this.enabled) return;
         
-        // 节流：避免连续消除时音效播放太频繁
+        // 节流：避免连续消除时音效播放太频繁（缩短到300ms）
         const now = Date.now();
-        if (this.lastExcellentTime && now - this.lastExcellentTime < 500) {
-            return; // 500ms 内不重复播放
+        if (this.lastExcellentTime && now - this.lastExcellentTime < 300) {
+            return;
         }
         this.lastExcellentTime = now;
 
-        // 优先使用本地音效文件
-        if (this.hasExcellentAudio) {
+        // 尝试播放本地音效文件
+        if (this.excellentAudio) {
             // 如果正在播放，先停止
             if (!this.excellentAudio.paused) {
                 this.excellentAudio.pause();
             }
             this.excellentAudio.currentTime = 0;
-            this.excellentAudio.play().catch(() => {});
+            this.excellentAudio.play().catch(() => {
+                // 播放失败时使用备用音效
+                this.playCuteSynthSound();
+            });
         } else {
-            // 备用：合成音效 + TTS
+            // 备用：合成音效
             this.playCuteSynthSound();
-            setTimeout(() => {
-                this.playVoice('Excellent!', 2.0, 1.3);
-            }, 200);
         }
     }
 
