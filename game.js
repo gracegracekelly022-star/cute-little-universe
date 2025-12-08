@@ -861,6 +861,14 @@ class Game {
 
     // 显示关卡完成
     showLevelComplete() {
+        // Google Analytics: 追踪过关事件
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'level_complete', {
+                'level': this.level,
+                'score': this.score
+            });
+        }
+        
         // 根据关卡显示不同图片
         const levelImages = {
             1: 'reward/round-1.jpg',
@@ -896,11 +904,19 @@ class Game {
     showGameOver(won) {
         this.gameOver = true;
         
+        // Google Analytics: 追踪游戏结束事件
+        if (typeof gtag !== 'undefined') {
+            gtag('event', won ? 'game_complete' : 'game_over', {
+                'final_level': this.level,
+                'final_score': this.score
+            });
+        }
+
         const winContent = document.getElementById('winContent');
         const loseContent = document.getElementById('loseContent');
         const winStage1 = document.getElementById('winStage1');
         const winStage2 = document.getElementById('winStage2');
-        
+
         if (won) {
             // 胜利流程
             winContent.style.display = 'block';
@@ -989,8 +1005,15 @@ class Game {
 
     // 分享游戏
     shareGame() {
-        const url = window.location.href;
+        // Google Analytics: 追踪分享事件
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'share', {
+                'method': 'copy_link'
+            });
+        }
         
+        const url = window.location.href;
+
         // 复制到剪贴板
         navigator.clipboard.writeText(url).then(() => {
             this.showToast('✅ 链接已复制，快去分享吧！');
