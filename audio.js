@@ -69,7 +69,7 @@ class AudioManager {
         
         // 福利时间音效
         this.fuliTimeAudio = new Audio('sounds/3-fuli-time.mp3?t=' + cacheBreaker);
-        this.fuliTimeAudio.volume = 0.4;
+        this.fuliTimeAudio.volume = 0.2;  // 降低音量
         this.hasFuliTimeAudio = false;
         
         this.fuliTimeAudio.addEventListener('canplaythrough', () => {
@@ -236,8 +236,19 @@ class AudioManager {
     playExcellent() {
         if (!this.enabled) return;
         
+        // 节流：避免连续消除时音效播放太频繁
+        const now = Date.now();
+        if (this.lastExcellentTime && now - this.lastExcellentTime < 500) {
+            return; // 500ms 内不重复播放
+        }
+        this.lastExcellentTime = now;
+
         // 优先使用本地音效文件
         if (this.hasExcellentAudio) {
+            // 如果正在播放，先停止
+            if (!this.excellentAudio.paused) {
+                this.excellentAudio.pause();
+            }
             this.excellentAudio.currentTime = 0;
             this.excellentAudio.play().catch(() => {});
         } else {
