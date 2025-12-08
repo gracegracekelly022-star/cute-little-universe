@@ -878,6 +878,13 @@ body {
     color: #FF6B35;
 }
 
+/* 惊喜生成中文字样式 */
+.generating-text {
+    color: #9b7fd4 !important;
+    font-weight: 500;
+    font-size: 1.1em !important;
+}
+
 @keyframes reward-appear {
     from {
         opacity: 0;
